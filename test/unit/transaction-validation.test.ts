@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { createTransactionSchema } from "@/server/validation/transaction";
+const valid = { categoryId: "11111111-1111-4111-8111-111111111111", type: "expense", amountCents: 1, description: "Coffee", occurredOn: "2026-09-11" };
+describe("transaction validation", () => { it("rejects zero/negative amounts, bad types, missing descriptions, and invalid dates", () => { expect(createTransactionSchema.safeParse({ ...valid, amountCents: 0 }).success).toBe(false); expect(createTransactionSchema.safeParse({ ...valid, type: "transfer" }).success).toBe(false); expect(createTransactionSchema.safeParse({ ...valid, description: "" }).success).toBe(false); expect(createTransactionSchema.safeParse({ ...valid, occurredOn: "not-a-date" }).success).toBe(false); }); });

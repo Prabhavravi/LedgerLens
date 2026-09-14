@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body { @apply bg-slate-950 text-slate-100 antialiased; }
+* { @apply border-slate-800; }
+button, a, input, select, textarea { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950; }
+::selection { @apply bg-blue-500/40 text-white; }
