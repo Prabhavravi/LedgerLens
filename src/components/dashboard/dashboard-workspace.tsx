@@ -28,8 +28,6 @@ export function DashboardWorkspace() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
-    setLoading(true);
-    setError(undefined);
     Promise.all([
       fetch(`/backend-api/analytics/dashboard?month=${currentMonthStr}`, { cache: "no-store" }),
       fetch(`/backend-api/insights?month=${currentMonthStr}`, { cache: "no-store" }),
@@ -84,7 +82,7 @@ export function DashboardWorkspace() {
         <div className="rounded-lg border border-rose-500/50 bg-rose-950/20 p-5 text-rose-300">
           <p className="font-semibold">Unable to load dashboard</p>
           <p className="mt-1 text-sm">{error}</p>
-          <button type="button" onClick={() => void load()} className="mt-4 rounded bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700">
+          <button type="button" onClick={() => { setLoading(true); setError(undefined); void load(); }} className="mt-4 rounded bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700">
             Try again
           </button>
         </div>

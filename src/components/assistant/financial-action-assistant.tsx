@@ -47,7 +47,9 @@ function AssistantInner() {
   const [error, setError] = useState<string>();
 
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const executeMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;

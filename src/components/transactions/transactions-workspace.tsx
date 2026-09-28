@@ -22,7 +22,7 @@ export function TransactionsWorkspace() {
   const [filterType, setFilterType] = useState<"" | TransactionType>("");
   const [sort, setSort] = useState("newest");
   const [message, setMessage] = useState<{ text: string; isError?: boolean }>();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const usableCategories = useMemo(
@@ -35,17 +35,15 @@ export function TransactionsWorkspace() {
     [categories]
   );
 
-  const load = useCallback(async () => {
-    setBusy(true);
+  const load = useCallback(() => {
     const params = new URLSearchParams({ sort });
     if (query.trim()) params.set("query", query.trim());
     if (filterType) params.set("type", filterType);
 
-    try {
-      const [txRes, catRes] = await Promise.all([
-        fetch(`/backend-api/transactions?${params}`, { cache: "no-store" }),
-        fetch("/backend-api/categories", { cache: "no-store" }),
-      ]);
+    return Promise.all([
+      fetch(`/backend-api/transactions?${params}`, { cache: "no-store" }),
+      fetch("/backend-api/categories", { cache: "no-store" }),
+    ]).then(async ([txRes, catRes]) => {
       const txBody = (await txRes.json()) as ApiResult<Transaction[]>;
       const catBody = (await catRes.json()) as ApiResult<Category[]>;
 
@@ -54,12 +52,12 @@ export function TransactionsWorkspace() {
 
       if (catBody.ok) setCategories(catBody.data ?? []);
       else setMessage({ text: catBody.error?.message ?? "Failed to load categories", isError: true });
-    } catch {
+    }).catch(() => {
       setMessage({ text: "Unable to load transactions.", isError: true });
-    } finally {
+    }).finally(() => {
       setBusy(false);
       setLoading(false);
-    }
+    });
   }, [query, filterType, sort]);
 
   useEffect(() => {
@@ -278,12 +276,12 @@ export function TransactionsWorkspace() {
         <input
           placeholder="Search by description…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { if (e.target.value !== query) setBusy(true); setQuery(e.target.value); }}
           className="min-w-[200px] flex-1 rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
         />
         <select
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value as "" | TransactionType)}
+          onChange={(e) => { if (e.target.value !== filterType) setBusy(true); setFilterType(e.target.value as "" | TransactionType); }}
           className="rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
         >
           <option value="">All Types</option>
@@ -292,7 +290,7 @@ export function TransactionsWorkspace() {
         </select>
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          onChange={(e) => { if (e.target.value !== sort) setBusy(true); setSort(e.target.value); }}
           className="rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
         >
           <option value="newest">Newest First</option>

@@ -21,7 +21,7 @@ export function BudgetsWorkspace() {
   const [amount, setAmount] = useState("");
   const [editing, setEditing] = useState<string>();
   const [message, setMessage] = useState<{ text: string; isError?: boolean }>();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const expenseCategories = useMemo(
@@ -29,13 +29,11 @@ export function BudgetsWorkspace() {
     [categories]
   );
 
-  const load = useCallback(async () => {
-    setBusy(true);
-    try {
-      const [budgetResponse, categoryResponse] = await Promise.all([
-        fetch(`/backend-api/budgets?month=${month}`, { cache: "no-store" }),
-        fetch("/backend-api/categories", { cache: "no-store" }),
-      ]);
+  const load = useCallback(() => {
+    return Promise.all([
+      fetch(`/backend-api/budgets?month=${month}`, { cache: "no-store" }),
+      fetch("/backend-api/categories", { cache: "no-store" }),
+    ]).then(async ([budgetResponse, categoryResponse]) => {
       const budgets = (await budgetResponse.json()) as ApiResult<BudgetStatus[]>;
       const categoryList = (await categoryResponse.json()) as ApiResult<Category[]>;
 
@@ -44,12 +42,12 @@ export function BudgetsWorkspace() {
 
       if (categoryList.ok) setCategories(categoryList.data ?? []);
       else setMessage({ text: categoryList.error?.message ?? "Failed to load categories", isError: true });
-    } catch {
+    }).catch(() => {
       setMessage({ text: "Unable to load budgets.", isError: true });
-    } finally {
+    }).finally(() => {
       setBusy(false);
       setLoading(false);
-    }
+    });
   }, [month]);
 
   useEffect(() => {
@@ -135,7 +133,7 @@ export function BudgetsWorkspace() {
             id="budget-period"
             type="month"
             value={month}
-            onChange={(e) => setMonth(e.target.value)}
+            onChange={(e) => { if (e.target.value !== month) setBusy(true); setMonth(e.target.value); }}
             className="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
           />
         </div>

@@ -33,19 +33,17 @@ export function GoalsWorkspace() {
   const [activePlan, setActivePlan] = useState<GoalActionPlan | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    setError(undefined);
-    try {
-      const response = await fetch("/backend-api/goals", { cache: "no-store" });
-      const body = (await response.json()) as ApiResult<GoalStatus[]>;
-      if (!body.ok) throw new Error(body.error?.message ?? "Unable to load goals.");
-      setGoals(body.data ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load goals.");
-    } finally {
-      setLoading(false);
-    }
+  function load() {
+    return fetch("/backend-api/goals", { cache: "no-store" })
+      .then(async (response) => {
+        const body = (await response.json()) as ApiResult<GoalStatus[]>;
+        if (!body.ok) throw new Error(body.error?.message ?? "Unable to load goals.");
+        setGoals(body.data ?? []);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Unable to load goals.");
+      })
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -95,6 +93,8 @@ export function GoalsWorkspace() {
       setTargetDate("");
       setDescription("");
       setShowCreateForm(false);
+      setLoading(true);
+      setError(undefined);
       await load();
     } catch (err) {
       setFormMessage(err instanceof Error ? err.message : "Failed to create goal.");
@@ -122,6 +122,8 @@ export function GoalsWorkspace() {
       }
       setContributeGoalId(null);
       setContributeAmount("");
+      setLoading(true);
+      setError(undefined);
       await load();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to contribute funds.");
@@ -139,6 +141,8 @@ export function GoalsWorkspace() {
         const body = (await response.json()) as ApiFailure;
         throw new Error(body.error?.message ?? "Failed to delete goal.");
       }
+      setLoading(true);
+      setError(undefined);
       await load();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete goal.");
