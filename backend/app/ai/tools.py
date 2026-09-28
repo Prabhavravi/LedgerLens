@@ -17,7 +17,7 @@ from app.repositories.category_repo import CategoryRepository
 from app.repositories.budget_repo import BudgetRepository
 from app.repositories.goal_repo import GoalRepository
 from app.repositories.analytics_repo import AnalyticsRepository
-import asyncpg
+from app.db.tenant import TenantDatabase
 
 
 class GetTransactionsToolInput(BaseModel):
@@ -357,7 +357,7 @@ def register_financial_tools(registry: ToolRegistry, services: ToolServices) -> 
     return registry
 
 
-def create_financial_tool_registry(pool: asyncpg.Pool) -> ToolRegistry:
+def create_financial_tool_registry(pool: TenantDatabase) -> ToolRegistry:
     tx_repo = TransactionRepository(pool)
     cat_repo = CategoryRepository(pool)
     budget_repo = BudgetRepository(pool)

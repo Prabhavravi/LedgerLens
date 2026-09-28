@@ -5,7 +5,7 @@ import type { Category, Transaction, TransactionType } from "@/types/domain";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 
-type ApiResult<T> = { ok: boolean; data?: T; error?: { message: string } };
+import type { ApiFailure, ApiResult } from "@/types/api";
 
 const today = new Date().toISOString().slice(0, 10);
 const blank = { type: "expense" as TransactionType, categoryId: "", amount: "", description: "", occurredOn: today };
@@ -49,10 +49,10 @@ export function TransactionsWorkspace() {
       const txBody = (await txRes.json()) as ApiResult<Transaction[]>;
       const catBody = (await catRes.json()) as ApiResult<Category[]>;
 
-      if (txRes.ok) setTransactions(txBody.data ?? []);
+      if (txBody.ok) setTransactions(txBody.data ?? []);
       else setMessage({ text: txBody.error?.message ?? "Failed to load transactions", isError: true });
 
-      if (catRes.ok) setCategories(catBody.data ?? []);
+      if (catBody.ok) setCategories(catBody.data ?? []);
       else setMessage({ text: catBody.error?.message ?? "Failed to load categories", isError: true });
     } catch {
       setMessage({ text: "Unable to load transactions.", isError: true });
@@ -98,7 +98,7 @@ export function TransactionsWorkspace() {
         }),
       });
       const body = (await response.json()) as ApiResult<Transaction>;
-      if (!response.ok) {
+      if (!body.ok) {
         setMessage({ text: body.error?.message ?? "Unable to save transaction.", isError: true });
       } else {
         setForm(blank);
@@ -131,7 +131,7 @@ export function TransactionsWorkspace() {
     try {
       const response = await fetch(`/backend-api/transactions/${id}`, { method: "DELETE" });
       if (!response.ok) {
-        const body = (await response.json()) as ApiResult<never>;
+        const body = (await response.json()) as ApiFailure;
         setMessage({ text: body.error?.message ?? "Unable to delete transaction.", isError: true });
       } else {
         setMessage({ text: "Transaction deleted." });

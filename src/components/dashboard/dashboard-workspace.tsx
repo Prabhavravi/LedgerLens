@@ -6,7 +6,7 @@ import type { FinancialAnalytics, FinancialInsight, GoalStatus } from "@/types/d
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 
-type ApiResult = { ok: boolean; data?: FinancialAnalytics; error?: { message: string } };
+import type { ApiResult } from "@/types/api";
 
 const money = (cents: number) =>
   `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -36,15 +36,15 @@ export function DashboardWorkspace() {
       fetch("/backend-api/goals", { cache: "no-store" }),
     ])
       .then(async ([analyticsRes, insightRes, goalRes]) => {
-        const dashboard = (await analyticsRes.json()) as ApiResult;
-        const insightBody = (await insightRes.json()) as { ok: boolean; data?: FinancialInsight[] };
-        const goalBody = (await goalRes.json()) as { ok: boolean; data?: GoalStatus[] };
+        const dashboard = (await analyticsRes.json()) as ApiResult<FinancialAnalytics>;
+        const insightBody = (await insightRes.json()) as ApiResult<FinancialInsight[]>;
+        const goalBody = (await goalRes.json()) as ApiResult<GoalStatus[]>;
 
-        if (!analyticsRes.ok) setError(dashboard.error?.message ?? "Unable to load analytics.");
+        if (!dashboard.ok) setError(dashboard.error?.message ?? "Unable to load analytics.");
         else setData(dashboard.data);
 
-        if (insightRes.ok) setInsights(insightBody.data ?? []);
-        if (goalRes.ok) setGoals(goalBody.data ?? []);
+        if (insightBody.ok) setInsights(insightBody.data ?? []);
+        if (goalBody.ok) setGoals(goalBody.data ?? []);
       })
       .catch(() => setError("Unable to load analytics data."))
       .finally(() => setLoading(false));

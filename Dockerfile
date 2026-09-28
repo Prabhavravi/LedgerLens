@@ -9,6 +9,8 @@ WORKDIR /app
 RUN corepack enable
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+ARG BACKEND_PUBLIC_URL=http://127.0.0.1:8000/api/v1
+ENV BACKEND_PUBLIC_URL=$BACKEND_PUBLIC_URL
 RUN pnpm build
 ENV NODE_ENV=production PORT=3000
 EXPOSE 3000

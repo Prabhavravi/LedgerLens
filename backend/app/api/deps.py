@@ -24,7 +24,7 @@ from app.ai.tools import create_financial_tool_registry
 from app.ai.orchestrator import FinancialAssistantOrchestrator
 from app.ai.provider import get_assistant_model
 
-SESSION_COOKIE_NAME = "ledgerlens_session"
+SESSION_COOKIE_NAME = settings.SESSION_COOKIE_NAME
 
 
 async def get_db() -> asyncpg.Pool:
@@ -34,35 +34,6 @@ async def get_db() -> asyncpg.Pool:
 def get_auth_service(pool: asyncpg.Pool = Depends(get_db)) -> AuthService:
     return AuthService(AuthRepository(pool))
 
-
-def get_category_service(pool: asyncpg.Pool = Depends(get_db)) -> CategoryService:
-    return CategoryService(CategoryRepository(pool))
-
-
-def get_transaction_service(pool: asyncpg.Pool = Depends(get_db)) -> TransactionService:
-    return TransactionService(TransactionRepository(pool), CategoryRepository(pool))
-
-
-def get_budget_service(pool: asyncpg.Pool = Depends(get_db)) -> BudgetService:
-    return BudgetService(BudgetRepository(pool), CategoryRepository(pool))
-
-
-def get_goal_service(pool: asyncpg.Pool = Depends(get_db)) -> GoalService:
-    # Goals use the shared analytics layer for feasibility/action-plan facts.
-    budget_svc = BudgetService(BudgetRepository(pool), CategoryRepository(pool))
-    analytics_svc = AnalyticsService(AnalyticsRepository(pool), budget_svc)
-    return GoalService(GoalRepository(pool), analytics_svc)
-
-
-def get_analytics_service(pool: asyncpg.Pool = Depends(get_db)) -> AnalyticsService:
-    budget_svc = BudgetService(BudgetRepository(pool), CategoryRepository(pool))
-    return AnalyticsService(AnalyticsRepository(pool), budget_svc)
-
-
-def get_insight_service(pool: asyncpg.Pool = Depends(get_db)) -> InsightService:
-    budget_svc = BudgetService(BudgetRepository(pool), CategoryRepository(pool))
-    analytics_svc = AnalyticsService(AnalyticsRepository(pool), budget_svc)
-    return InsightService(analytics_svc)
 
 
 async def get_current_user(
@@ -96,8 +67,7 @@ async def get_tenant_db(
     return TenantDatabase(pool, user.id)
 
 
-# Rebind application service dependencies after authentication is available so
-# every financial repository receives the request-scoped RLS context.
+# Every financial service receives the authenticated request's database context.
 def get_category_service(pool: TenantDatabase = Depends(get_tenant_db)) -> CategoryService:
     return CategoryService(CategoryRepository(pool))
 

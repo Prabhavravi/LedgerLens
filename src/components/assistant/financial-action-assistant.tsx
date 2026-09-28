@@ -114,7 +114,7 @@ function AssistantInner() {
           result: body.data.message,
         },
       ]);
-      // Revalidate server-rendered financial summaries before the user returns to the dashboard.
+      // Refresh the server-rendered shell. Financial workspaces fetch on mount.
       router.refresh();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Action failed.");

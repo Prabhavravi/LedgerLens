@@ -3,9 +3,7 @@ export interface AuthenticatedUser { id: string; email: string; }
 export interface Category { id: string; userId: string | null; name: string; type: TransactionType; }
 export interface Transaction { id: string; userId: string; categoryId: string; type: TransactionType; amountCents: number; description: string; occurredOn: string; }
 export interface Budget { id: string; userId: string; categoryId: string; month: string; amountCents: number; }
-export interface BudgetStatus { budget: Budget; category: Category; spentCents: number; remainingCents: number; percentageUsed: number; exceeded: boolean; }
-export interface FinancialSummary { month: string; incomeCents: number; expenseCents: number; netCents: number; }
-export interface TransactionListFilters { type?: TransactionType; categoryId?: string; query?: string; startDate?: string; endDate?: string; sort?: "newest" | "oldest" | "amount_desc" | "amount_asc"; }
+export interface BudgetStatus { budget: Budget; category: Category; spentCents: number; remainingCents: number; percentageUsed: number; exceeded: boolean; status: "on_track" | "warning" | "exceeded"; }
 export interface CategorySpending { categoryId: string; categoryName: string; amountCents: number; percentageOfExpenses: number; }
 export interface SpendingTrend { month: string; expenseCents: number; previousExpenseCents: number; changeCents: number; changePercent: number | null; }
 export interface AnalyticsSummary { period: string; incomeCents: number; expenseCents: number; netSavingsCents: number; savingsRate: number | null; averageDailyExpenseCents: number; }

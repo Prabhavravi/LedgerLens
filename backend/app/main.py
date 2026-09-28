@@ -59,17 +59,12 @@ app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
-# Include routers for both /api/v1 and /api
-for prefix in ("/api/v1", "/api"):
-    app.include_router(health.router, prefix=prefix)
-    app.include_router(auth.router, prefix=prefix)
-    app.include_router(categories.router, prefix=prefix)
-    app.include_router(transactions.router, prefix=prefix)
-    app.include_router(budgets.router, prefix=prefix)
-    app.include_router(goals.router, prefix=prefix)
-    app.include_router(analytics.router, prefix=prefix)
-    app.include_router(insights.router, prefix=prefix)
-    app.include_router(ai.router, prefix=prefix)
+# One versioned API, reached by the frontend through /backend-api/*.
+for router in (
+    health.router, auth.router, categories.router, transactions.router,
+    budgets.router, goals.router, analytics.router, insights.router, ai.router,
+):
+    app.include_router(router, prefix="/api/v1")
 
 
 @app.get("/")

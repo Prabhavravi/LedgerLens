@@ -1,5 +1,6 @@
 from typing import Optional
 import asyncpg
+from app.db.tenant import TenantDatabase
 from app.schemas.transaction import (
     CreateTransactionInput,
     Transaction,
@@ -27,7 +28,7 @@ def map_transaction(row: asyncpg.Record) -> Transaction:
 
 
 class TransactionRepository:
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: TenantDatabase):
         self.pool = pool
 
     async def create(self, user_id: str, input_data: CreateTransactionInput) -> Transaction:

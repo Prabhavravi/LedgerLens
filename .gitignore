@@ -9,3 +9,11 @@ backend.env
 backend/.venv/
 coverage/
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+!.env.example
+!backend/.env.example
+backend/.local/
+.DS_Store

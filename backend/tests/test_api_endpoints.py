@@ -73,6 +73,12 @@ def test_health_check(client):
     assert data["service"] == "ai-powered-expense-tracker"
 
 
+def test_unversioned_api_is_not_registered(client):
+    assert client.get("/api/health").status_code == 404
+    paths = client.get("/openapi.json").json()["paths"]
+    assert all(path == "/" or path.startswith("/api/v1/") for path in paths)
+
+
 def test_categories_api(client):
     # List initial system categories
     res = client.get("/api/v1/categories")

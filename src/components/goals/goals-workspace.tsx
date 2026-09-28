@@ -5,7 +5,7 @@ import type { GoalActionPlan, GoalStatus } from "@/types/domain";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 
-type ApiResult<T> = { ok: boolean; data?: T; error?: { message: string } };
+import type { ApiFailure, ApiResult } from "@/types/api";
 
 const money = (cents: number) =>
   `₹${(cents / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -39,7 +39,7 @@ export function GoalsWorkspace() {
     try {
       const response = await fetch("/backend-api/goals", { cache: "no-store" });
       const body = (await response.json()) as ApiResult<GoalStatus[]>;
-      if (!response.ok) throw new Error(body.error?.message ?? "Unable to load goals.");
+      if (!body.ok) throw new Error(body.error?.message ?? "Unable to load goals.");
       setGoals(body.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load goals.");
@@ -87,7 +87,7 @@ export function GoalsWorkspace() {
         }),
       });
       const body = (await response.json()) as ApiResult<unknown>;
-      if (!response.ok) throw new Error(body.error?.message ?? "Failed to create goal.");
+      if (!body.ok) throw new Error(body.error?.message ?? "Failed to create goal.");
 
       setName("");
       setTargetAmount("");
@@ -117,7 +117,7 @@ export function GoalsWorkspace() {
         body: JSON.stringify({ amountCents }),
       });
       if (!response.ok) {
-        const body = (await response.json()) as ApiResult<unknown>;
+        const body = (await response.json()) as ApiFailure;
         throw new Error(body.error?.message ?? "Contribution failed.");
       }
       setContributeGoalId(null);
@@ -136,7 +136,7 @@ export function GoalsWorkspace() {
     try {
       const response = await fetch(`/backend-api/goals/${goalId}`, { method: "DELETE" });
       if (!response.ok) {
-        const body = (await response.json()) as ApiResult<unknown>;
+        const body = (await response.json()) as ApiFailure;
         throw new Error(body.error?.message ?? "Failed to delete goal.");
       }
       await load();
@@ -152,7 +152,7 @@ export function GoalsWorkspace() {
     try {
       const response = await fetch(`/backend-api/goals/${goalId}/plan`);
       const body = (await response.json()) as ApiResult<GoalActionPlan>;
-      if (!response.ok) throw new Error(body.error?.message ?? "Failed to load action plan.");
+      if (!body.ok) throw new Error(body.error?.message ?? "Failed to load action plan.");
       setActivePlan(body.data ?? null);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to load action plan.");

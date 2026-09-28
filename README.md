@@ -1,78 +1,121 @@
-# LedgerLens — AI-Powered Expense Tracker
+# LedgerLens
 
-> Production note: the active application path is **Next.js UI → FastAPI → PostgreSQL/Supabase**. Legacy Next.js API routes are retained only as migration rollback artifacts and must not be deployed as an application backend.
+LedgerLens is a personal finance application for recording income and expenses, setting category budgets, tracking savings goals, and asking an AI assistant about your financial records.
 
-## Overview
+## Current architecture
 
-This is the security-first foundation for a multi-tenant personal-finance application. It intentionally supplies boundaries and contracts, rather than prematurely implementing the product’s transaction, budget, dashboard, or chat UI.
+```text
+Browser (React)
+  → Next.js /backend-api/* proxy
+  → FastAPI /api/v1/*
+  → authentication + Pydantic validation
+  → Python services
+  → repositories + transaction-local tenant context
+  → PostgreSQL / Supabase
+```
 
-## Stack
+Next.js owns pages, components, and a server-side session check. FastAPI owns authentication, financial business rules, database access, and AI tools. There is no Next.js application API or TypeScript financial backend.
 
-Next.js 14 App Router, React, TypeScript, Tailwind CSS, PostgreSQL/Supabase-compatible RLS, FastAPI, Pydantic, asyncpg, pytest, Docker, and a Python AI tool layer.
+## Project map
 
-## Runtime architecture
-
-The Next.js application is the frontend. Its browser requests use the same-origin `/backend-api/*` path, which Next rewrites to FastAPI at `/api/v1/*`; this preserves secure `HttpOnly` cookies without exposing a browser-accessible API secret. FastAPI is the canonical backend for authentication, validation, business rules, analytics, insights, and AI tools. The legacy Next API/server layer remains in the repository temporarily for rollback only and must not receive new business logic.
-
-For local development, start FastAPI from `backend` with `uvicorn app.main:app --reload --port 8000`, then start Next.js normally. Configure `BACKEND_PUBLIC_URL` and `BACKEND_INTERNAL_URL` as shown in `.env.example`.
-
-## Architecture
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). UI routes live in `src/app`; server-only code lives in `src/server`; domain/API/AI contracts live in `src/types`.
+```text
+src/
+  app/                  Next.js pages, layouts, styles, loading/error screens
+  components/           Interactive feature workspaces and shared UI
+  lib/backend/          Server-only FastAPI session integration
+  types/                Frontend data contracts matching FastAPI JSON
+backend/
+  app/
+    api/                HTTP routes and request-scoped dependency construction
+    schemas/            Pydantic input validation and output models
+    services/           Authentication, business rules, financial calculations
+    repositories/       Parameterized SQL and record mapping
+    db/                 Connection pool and tenant database wrapper
+    ai/                 Model adapters, prompts, orchestration, approved tools
+    main.py             FastAPI application startup and route registration
+    config.py           Backend environment settings
+    exceptions.py       Consistent API error responses
+  migrations/           Ordered SQL setup and tenant-isolation migration
+  tests/                Backend unit, API, security, and resilience tests
+  requirements.txt      Runtime Python dependencies
+  requirements-dev.txt  Runtime dependencies plus pytest tooling
+test/                   Frontend session/proxy tests and test-only mocks
+docs/                   Architecture and deployment instructions
+.github/workflows/      Frontend and backend CI checks
+```
 
 ## Local setup
 
-1. Copy `.env.example` to `.env.local` and set real server secrets.
-2. Install packages with `npm install`.
-3. Run `npm run dev`; visit `/api/health`.
-4. Run `npm run typecheck`, `npm run lint`, and `npm test`.
+Prerequisites: Node.js 20.19+ (a supported LTS version), pnpm 11.19.0, Python 3.12+, and a PostgreSQL database. The supplied initial SQL targets Supabase; see the database instructions below.
 
-## Environment variables
+From the repository root:
 
-`DATABASE_URL`, `APP_SECRET`, and AI keys are server-only; they must never have the `NEXT_PUBLIC_` prefix or be imported by browser components. Only non-secret app metadata may use `NEXT_PUBLIC_`.
+```sh
+corepack enable
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
+python -m pip install -r backend/requirements-dev.txt
+cp backend/.env.example backend/.env
+```
 
-## Database
+On Windows, activate the virtual environment with `backend\.venv\Scripts\Activate.ps1` in PowerShell.
 
-`src/server/db/schema.sql` defines tenant-owned transactions and budgets with PostgreSQL RLS. Application repositories must receive their `userId` from `requireAuthenticatedUser`, and database adapters must establish the matching RLS identity.
+Fill in `backend/.env` with the database connection details. Database credentials and AI keys belong only in the backend environment. The root `.env.local` contains the two backend URLs used by Next.js.
 
-## Authentication
+Start the backend in the terminal with the Python environment activated:
 
-Email/password authentication stores an adaptive `scrypt` password hash, never the password. Login and signup issue an opaque random session token; only its SHA-256 hash is stored in PostgreSQL. The plaintext token exists solely in an `HttpOnly`, `SameSite=Lax` cookie (also `Secure` in production). `getAuthenticatedUser()` looks up and validates the session on the server, including expiry and logout revocation. Protected route groups redirect unauthenticated visitors to `/login`.
+```sh
+pnpm dev:backend
+```
 
-## Transactions and categories
+In a second terminal, start Next.js:
 
-`/api/transactions` supports authenticated create/list operations; `/api/transactions/:id` supports authenticated update/delete. `TransactionService` gets the identity from `requireAuthenticatedUser()` and validates that a category is global or owned by that user and has the matching income/expense type. SQL reads, updates, and deletes include both the record ID and authenticated user ID. Global categories are seeded by the schema; users may create and manage only their private categories through `/api/categories`.
+```sh
+pnpm dev
+```
 
-## Budget service interface
+Open `http://localhost:3000`. FastAPI's health endpoint is `http://127.0.0.1:8000/api/v1/health`; the same endpoint through Next.js is `http://localhost:3000/backend-api/health`. FastAPI exposes interactive API documentation at `http://127.0.0.1:8000/docs`.
 
-`BudgetService` owns all budget calculations. `listStatusesForCurrentUser(month)` returns a `BudgetStatus` for each current-user budget. Server-only callers such as future analytics and AI tools may use `getBudgetStatus(authenticatedUser, categoryId, month)`. A status includes `budget`, `category`, `spentCents`, `remainingCents`, `percentageUsed`, and `exceeded`; UI code consumes this result rather than reimplementing the calculation.
+## Database setup
 
-## Analytics service interface
+For a new Supabase database, run these SQL files in order using the SQL editor as the database owner:
 
-`AnalyticsService` is the deterministic source for dashboard numbers. `getFinancialSummary(user, period)`, `getCategoryBreakdown(user, period)`, `getSpendingTrends(user, period)`, `getBudgetOverview(user, period)`, and `getDashboardForCurrentUser(period)` return typed, authenticated-user-scoped data. Savings are `income - expenses`; savings rate is `savings / income × 100` (or `null` with no income); category share is `category expense / total expenses × 100`; month-over-month change compares the current and preceding calendar month. The React dashboard only renders these outputs.
+1. `backend/migrations/001_initial_schema.sql` creates the tables and shared categories. It retains the original Supabase `auth.uid()` policies as the historical base migration.
+2. `backend/migrations/002_authenticated_rls.sql` replaces those policies with the application-session tenant context and creates the restricted `app_backend` role. Replace `REPLACE_BEFORE_RUNNING` with a strong password before executing this file.
 
-## Deterministic insights
+Use the resulting `app_backend` connection string in FastAPI's `DATABASE_URL`. An existing database that has already received both migrations needs no SQL changes for this folder cleanup. Do not rerun migration 001 on an existing database. These SQL files are applied manually; app startup does not run migrations.
 
-`InsightService` analyzes authenticated analytics data; it is not an LLM. Defaults are configurable in `DEFAULT_INSIGHT_THRESHOLDS`: category surge ≥25%, overall month-over-month movement ≥25%, and budget-approaching ≥80%. It emits category surges only when both periods have non-zero spending, budget overruns/near-limits from `BudgetService`, and overall spending changes only with a non-zero prior-period baseline. For a category surge, the savings opportunity uses an explicit 20% reduction of current spending as an illustrative target—not an optimal recommendation. Each `FinancialInsight` contains the rule evidence, amounts, severity, explanation, recommendation, and supporting figures.
+The base migration expects Supabase's `auth.uid()` function, and migration 002 references Supabase roles. These files are not a turnkey bootstrap for a plain local PostgreSQL installation.
 
-## Financial goals and monthly action plans
+## Features and data flow
 
-Goals are private, tenant-owned records with a name, target amount, current saved amount, target date, and optional description. The deterministic `GoalService` owns goal status and action-plan calculations; its action-plan entry point derives the authenticated user internally and never accepts a caller-supplied user ID. The dashboard and `/goals` page render its typed results, while the assistant accesses them through `get_my_financial_goals` and `get_my_goal_action_plan`.
+- **Accounts:** email/password authentication with scrypt password hashes and opaque session tokens. PostgreSQL stores only token hashes; the browser receives an HttpOnly session cookie.
+- **Transactions:** create, list, filter, edit, and delete income or expenses. Categories must be shared or belong to the current user and match the transaction type.
+- **Budgets:** one budget per user/category/month, with spent amount, remaining amount, percentage used, and threshold status calculated by the backend.
+- **Dashboard:** income, expenses, net savings, category spending, monthly trends, large expenses, and budgets. The UI also requests insights and goals.
+- **Insights:** deterministic rules for category increases, budget limits, monthly changes, and illustrative savings opportunities.
+- **Goals:** saved amount, target, deadline, contributions, and deterministic action plans based on current monthly savings. Contributions update goal progress; they do not create financial transactions.
+- **Assistant:** approved tools reuse the same Python services as the forms. Read tools execute during conversation; writes produce a confirmation card and execute through a separate authenticated action endpoint.
 
-Formulas are explicit: `remaining = max(0, target − saved)`; `progress = min(100, saved / target × 100)`; `remaining months` counts the current target month inclusively and is zero after the deadline; and `required average monthly saving = ceil(remaining / remaining months)` (the full remaining amount when due this month). Current monthly net savings is `income − expenses`; a plan is on track when it meets or exceeds the required monthly saving, otherwise its savings gap is `required − current net savings`. Adjustment opportunities are grounded in this month's category totals and show an illustrative 20% reduction for the top three spending categories. They are suggestions, not guarantees or mathematically optimal advice.
+Money is stored as integer minor units. Fields are named `amountCents`, but the current UI displays rupees, so these represent paise. UI forms and AI tools convert currency amounts to minor units before calling financial services.
 
-## AI tool boundary
+## AI configuration
 
-The authenticated `POST /api/ai/tools` endpoint calls `AuthenticatedToolOrchestrator`, then the centralized `ToolRegistry`, then existing services. The LLM receives only metadata and JSON schemas for these allow-listed tools: `get_my_transactions`, `get_my_financial_summary`, `get_my_category_spending`, `get_my_spending_trends`, `get_my_budget_status`, `create_my_transaction`, `update_my_transaction`, and `create_or_update_my_budget`. None accepts `userId` or `user_id`; the registry rejects either key recursively and injects `requireAuthenticatedUser()`’s server-verified identity. Tools have no SQL or database credential access, and logs include only tool name, verified user ID, duration, outcome, error code, and input keys.
+Set `AI_PROVIDER=local` explicitly to use the limited, deterministic development assistant without external API calls. There is no automatic fallback when a provider key is missing.
 
-Example: `get_my_transactions({ startDate: "2026-09-01", endDate: "2026-09-30", type: "expense", limit: 20 })`; `create_or_update_my_budget({ categoryId: "<uuid>", amount: 10000, month: "2026-09" })`. Amounts are decimal currency units at the tool boundary and become integer cents in the business services.
+For OpenAI, set `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and `AI_MODEL_NAME`. For Anthropic, set `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, and a matching `AI_MODEL_NAME`. Provider settings are backend-only.
 
-## Financial assistant and confirmed actions
+The assistant has twelve approved tools: seven reads and five writes. The tool registry validates inputs and rejects model-supplied `userId` or `user_id` fields recursively. It receives the authenticated identity from FastAPI. Conversation history is held in browser component state; it is not persisted in the database.
 
-The version-controlled `FINANCIAL_ASSISTANT_SYSTEM_PROMPT` requires grounded data, explicit calculations, factual/recommendation separation, and resistance to prompt injection. `/api/ai/assistant` authenticates the request then invokes `FinancialAssistantOrchestrator`. It supplies only approved tool metadata to the provider, executes model-selected read tools with the verified user context, returns their structured results to the provider, and stops after five tool rounds.
+## Checks
 
-Write tools (`create_my_transaction`, `update_my_transaction`, and `create_or_update_my_budget`) never run through the conversation endpoint. They produce a pending action card instead. Only the user's **Confirm Action** click calls `POST /api/ai/assistant/action`; that route re-authenticates the session, allow-lists the tool, validates its Zod input, then executes the existing service in the server-derived user context. The UI removes a completed proposal and refreshes server-rendered financial data. Every tool execution produces a safe server audit event containing the verified user ID, action type, timestamp, tool name, input field names, outcome, error code where applicable, and duration—never raw records, tokens, or secrets. With `AI_PROVIDER=openai` and a server-only `OPENAI_API_KEY`, the provider uses the Responses API custom-function pattern; without a key, a deterministic local provider supports limited local demonstration.
+```sh
+pnpm check            # TypeScript, ESLint, frontend tests, production build
+pnpm test:backend     # Run with the Python virtual environment activated
+```
 
-## AI
+Frontend tests exercise cookie forwarding, session failure behavior, and proxy routing. Python tests cover API behavior, validation, business calculations, authentication, tenant isolation, and AI tool boundaries using in-memory dependencies. These tests do not replace verification against a real database or live model provider. CI runs both suites and the frontend build.
 
-The model can receive only registered tool metadata. It does not receive SQL, database credentials, or a user ID. `ToolRegistry` rejects model-supplied `userId`/`user_id` and injects the verified server context during execution.
+See [Architecture](docs/ARCHITECTURE.md) for the code boundaries and [Deployment](docs/DEPLOYMENT.md) for hosting and release verification.

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getBackendAuthenticatedUser } from "@/server/auth/backend-session";
+import { getBackendAuthenticatedUser } from "@/lib/backend/session";
 import { AppNav } from "@/components/layout/app-nav";
 
 export default async function ProtectedLayout({

@@ -1,11 +1,12 @@
 import asyncpg
+from app.db.tenant import TenantDatabase
 from app.schemas.analytics import CategorySpending
 from app.schemas.transaction import Transaction
 from app.repositories.transaction_repo import TRANSACTION_COLUMNS, map_transaction
 
 
 class AnalyticsRepository:
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: TenantDatabase):
         self.pool = pool
 
     async def totals_for_user_period(self, user_id: str, month: str) -> tuple[int, int]:

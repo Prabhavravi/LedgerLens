@@ -1,5 +1,6 @@
 from typing import Optional
 import asyncpg
+from app.db.tenant import TenantDatabase
 from app.schemas.goal import CreateGoalInput, Goal, UpdateGoalInput
 
 GOAL_COLUMNS = """
@@ -24,7 +25,7 @@ def map_goal(row: asyncpg.Record) -> Goal:
 
 
 class GoalRepository:
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: TenantDatabase):
         self.pool = pool
 
     async def create(self, user_id: str, input_data: CreateGoalInput) -> Goal:

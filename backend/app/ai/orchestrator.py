@@ -1,9 +1,7 @@
-from typing import Optional
 import re
 from app.ai.prompts import FINANCIAL_ASSISTANT_SYSTEM_PROMPT
-from app.ai.provider import AssistantModel, get_assistant_model
+from app.ai.provider import AssistantModel
 from app.ai.tool_registry import ToolRegistry
-from app.ai.tools import create_financial_tool_registry
 from app.schemas.ai import (
     Activity,
     AssistantMessage,
@@ -162,23 +160,3 @@ class FinancialAssistantOrchestrator:
             activities=activities,
             pendingActions=pending_actions,
         )
-
-
-_assistant_instance: Optional[FinancialAssistantOrchestrator] = None
-
-
-def get_financial_assistant(tools: Optional[ToolRegistry] = None) -> FinancialAssistantOrchestrator:
-    if tools is not None:
-        return FinancialAssistantOrchestrator(get_assistant_model(), tools)
-    global _assistant_instance
-    if _assistant_instance is None:
-        # Fallback empty registry if accessed without pool
-        _assistant_instance = FinancialAssistantOrchestrator(get_assistant_model(), ToolRegistry())
-    return _assistant_instance
-
-
-def init_financial_assistant(pool) -> FinancialAssistantOrchestrator:
-    global _assistant_instance
-    tools = create_financial_tool_registry(pool)
-    _assistant_instance = FinancialAssistantOrchestrator(get_assistant_model(), tools)
-    return _assistant_instance

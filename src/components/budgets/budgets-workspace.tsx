@@ -6,7 +6,7 @@ import type { BudgetStatus, Category } from "@/types/domain";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 
-type ApiResult<T> = { ok: boolean; data?: T; error?: { message: string } };
+import type { ApiFailure, ApiResult } from "@/types/api";
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 
@@ -39,10 +39,10 @@ export function BudgetsWorkspace() {
       const budgets = (await budgetResponse.json()) as ApiResult<BudgetStatus[]>;
       const categoryList = (await categoryResponse.json()) as ApiResult<Category[]>;
 
-      if (budgetResponse.ok) setStatuses(budgets.data ?? []);
+      if (budgets.ok) setStatuses(budgets.data ?? []);
       else setMessage({ text: budgets.error?.message ?? "Failed to load budgets", isError: true });
 
-      if (categoryResponse.ok) setCategories(categoryList.data ?? []);
+      if (categoryList.ok) setCategories(categoryList.data ?? []);
       else setMessage({ text: categoryList.error?.message ?? "Failed to load categories", isError: true });
     } catch {
       setMessage({ text: "Unable to load budgets.", isError: true });
@@ -74,7 +74,7 @@ export function BudgetsWorkspace() {
       });
 
       const body = (await response.json()) as ApiResult<unknown>;
-      if (!response.ok) {
+      if (!body.ok) {
         setMessage({ text: body?.error?.message ?? "Unable to save budget.", isError: true });
       } else {
         setMessage({ text: editing ? "Budget updated successfully." : "Budget added successfully." });
@@ -103,7 +103,7 @@ export function BudgetsWorkspace() {
     try {
       const response = await fetch(`/backend-api/budgets/${id}`, { method: "DELETE" });
       if (!response.ok) {
-        const body = (await response.json()) as ApiResult<never>;
+        const body = (await response.json()) as ApiFailure;
         setMessage({ text: body.error?.message ?? "Unable to delete budget.", isError: true });
       } else {
         setMessage({ text: "Budget deleted." });

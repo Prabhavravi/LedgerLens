@@ -1,5 +1,6 @@
 from typing import Optional
 import asyncpg
+from app.db.tenant import TenantDatabase
 from app.schemas.budget import Budget, CreateBudgetInput, UpdateBudgetInput
 
 BUDGET_COLUMNS = 'id, user_id AS "userId", category_id AS "categoryId", month, amount_cents AS "amountCents"'
@@ -16,7 +17,7 @@ def map_budget(row: asyncpg.Record) -> Budget:
 
 
 class BudgetRepository:
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: TenantDatabase):
         self.pool = pool
 
     async def create(self, user_id: str, input_data: CreateBudgetInput) -> Budget:

@@ -1,10 +1,11 @@
 from typing import Optional
 import asyncpg
+from app.db.tenant import TenantDatabase
 from app.schemas.category import Category, CategoryInput, UpdateCategoryInput
 
 
 class CategoryRepository:
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: TenantDatabase):
         self.pool = pool
 
     async def list_available(self, user_id: str) -> list[Category]:

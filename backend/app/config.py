@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     NODE_ENV: Literal["development", "test", "production"] = "development"
     AI_PROVIDER: str = "openai"       # "openai" | "anthropic" | "local"
     OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
     AI_MODEL_NAME: str = "gpt-4o-mini"
     SESSION_COOKIE_NAME: str = "ledgerlens_session"
     SESSION_DURATION_SECONDS: int = 60 * 60 * 24 * 7
